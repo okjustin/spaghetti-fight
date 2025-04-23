@@ -12,6 +12,11 @@ export default function GameCanvas() {
   const canvasRef = useRef(null);
   const keys = useRef({});
   const [scale, setScale] = useState(1);
+  const [log, setLog] = useState([]);
+
+  const addLog = (text) => {
+    setLog(prev => [...prev.slice(-9), text]);
+  };  
 
   // 🧠 Store all noodles in a Map
   const noodles = useRef(new Map());
@@ -97,7 +102,7 @@ export default function GameCanvas() {
     
             const a = noodles.current.get(id1);
             const b = noodles.current.get(id2);
-            console.log(`${a?.name} and ${b?.name} bonked heads!`);
+            addLog(`${a?.name} and ${b?.name} bonked heads!`);
           }
         }
       }
@@ -119,7 +124,7 @@ export default function GameCanvas() {
           newPos.y < 0 || newPos.y >= GAME_SIZE
         ) {
           toKill.add(noodle.id);
-          console.log(`${noodle.name} hit the wall.`);
+          addLog(`${noodle.name} hit the wall.`);
           continue;
         }
     
@@ -134,7 +139,7 @@ export default function GameCanvas() {
             if (distance(newPos, point) < RADIUS * 2) {
               toKill.add(noodle.id);
               collided = true;
-              console.log(`${noodle.name} crashed into ${isSelf ? 'itself' : other.name}`);
+              addLog(`${noodle.name} crashed into ${isSelf ? 'itself' : other.name}`);
               break;
             }
           }
@@ -200,6 +205,7 @@ export default function GameCanvas() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        position: 'relative',
       }}
     >
       <canvas
@@ -213,6 +219,26 @@ export default function GameCanvas() {
           height: `${GAME_SIZE}px`,
         }}
       />
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 20,
+          left: 20,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          padding: '10px',
+          borderRadius: '8px',
+          fontFamily: 'monospace',
+          fontSize: '14px',
+          color: '#fff',
+          maxWidth: '300px',
+          maxHeight: '120px',
+          overflowY: 'auto',
+        }}
+      >
+        {log.map((entry, i) => (
+          <div key={i}>{entry}</div>
+        ))}
+      </div>
     </div>
-  );
+  );  
 }
