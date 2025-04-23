@@ -1,52 +1,53 @@
-import { useEffect, useRef } from 'react';
+import { useRef, useEffect } from 'react';
 
 export default function GameCanvas() {
   const canvasRef = useRef(null);
+  const pos = useRef({ x: 400, y: 300 });
+  const angle = useRef(0);
+  const speed = 100;
+  const keys = useRef({});
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    let x = 50;
-    let y = 50;
-    let dx = 10;
-    let dy = 0;
+    let lastTime = performance.now();
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = 'red';
-      ctx.fillRect(x, y, 10, 10);
+      ctx.fillRect(pos.current.x, pos.current.y, 5, 5);
     };
 
-    const update = () => {
-      x += dx;
-      y += dy;
+    const update = (delta) => {
+      if (keys.current.ArrowLeft) angle.current -= 2 * delta;
+      if (keys.current.ArrowRight) angle.current += 2 * delta;
 
+      pos.current.x += Math.cos(angle.current) * speed * delta;
+      pos.current.y += Math.sin(angle.current) * speed * delta;
+    };
+
+    const loop = (now) => {
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
+
+      update(delta);
       draw();
+      requestAnimationFrame(loop);
     };
 
-    const interval = setInterval(update, 100);
+    const handleKeyDown = (e) => keys.current[e.key] = true;
+    const handleKeyUp = (e) => keys.current[e.key] = false;
 
-    const handleKey = (e) => {
-      if (e.key === 'ArrowUp') [dx, dy] = [0, -10];
-      if (e.key === 'ArrowDown') [dx, dy] = [0, 10];
-      if (e.key === 'ArrowLeft') [dx, dy] = [-10, 0];
-      if (e.key === 'ArrowRight') [dx, dy] = [10, 0];
-    };
-
-    window.addEventListener('keydown', handleKey);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    requestAnimationFrame(loop);
 
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('keydown', handleKey);
-    }
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, []);
 
-  useEffect(() => {
-    fetch('http://localhost:5287/api/game/ping')
-      .then(res => res.text())
-      .then(data => console.log(data));
-  }, []);
-
-  return <canvas ref={canvasRef} width={800} height={600} />;
-}``
+  return <canvas ref={canvasRef} width={window.innerWidth} height={window.innerHeight} />;
+}
