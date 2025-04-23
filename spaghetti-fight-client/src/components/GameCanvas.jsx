@@ -1,69 +1,81 @@
 import { useEffect, useRef, useState } from 'react';
 
 const GAME_SIZE = 800;
+const SPEED = 100; // pixels per second
+
+function distance(a, b) {
+  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+}
 
 export default function GameCanvas() {
   const canvasRef = useRef(null);
-  const wrapperRef = useRef(null);
-  const pos = useRef({ x: 400, y: 400 });
-  const angle = useRef(0);
-  const speed = 100;
   const keys = useRef({});
-  const trail = useRef([]);
-  const isDead = useRef(false);
-
   const [scale, setScale] = useState(1);
 
+  // Noodle state
+  const noodle = useRef({
+    id: 'player-1',
+    name: 'Justin',
+    color: 'red',
+    trail: [{ x: 400, y: 400 }],
+    angle: 0,
+    alive: true,
+  });
+
+  // Movement + game loop
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     let lastTime = performance.now();
 
     const draw = () => {
-      ctx.fillStyle = isDead.current ? '#330000' : '#000';
+      // Background based on death
+      ctx.fillStyle = noodle.current.alive ? '#000' : '#330000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-      ctx.fillStyle = 'red';
-      for (const point of trail.current) {
+
+      // Draw noodle trail
+      ctx.fillStyle = noodle.current.color;
+      for (const point of noodle.current.trail) {
         ctx.fillRect(point.x, point.y, 2, 2);
       }
     };
-    
+
     const update = (delta) => {
-      if (isDead.current) return;
-    
-      if (keys.current.ArrowLeft) angle.current -= 2 * delta;
-      if (keys.current.ArrowRight) angle.current += 2 * delta;
-    
-      pos.current.x += Math.cos(angle.current) * speed * delta;
-      pos.current.y += Math.sin(angle.current) * speed * delta;
+      const player = noodle.current;
+      if (!player.alive) return;
 
-      const head = { x: pos.current.x, y: pos.current.y };
-      const minSelfDistance = 5;
+      // Rotate
+      if (keys.current.ArrowLeft) player.angle -= 2 * delta;
+      if (keys.current.ArrowRight) player.angle += 2 * delta;
 
-      const trailToCheck = trail.current.slice(0, -10);
+      // Move
+      const last = player.trail[player.trail.length - 1];
+      const newX = last.x + Math.cos(player.angle) * SPEED * delta;
+      const newY = last.y + Math.sin(player.angle) * SPEED * delta;
+      const newPos = { x: newX, y: newY };
 
-      for (const point of trailToCheck) {
-        if (distance(head, point) < minSelfDistance) {
-          isDead.current = true;
-          console.log('💀 Noodle committed suicide.');
+      // Wall death
+      if (
+        newX < 0 || newX >= GAME_SIZE ||
+        newY < 0 || newY >= GAME_SIZE
+      ) {
+        player.alive = false;
+        console.log(`${player.name} hit the wall.`);
+        return;
+      }
+
+      // Self collision (skip last 10 to avoid false positives)
+      for (const point of player.trail.slice(0, -10)) {
+        if (distance(newPos, point) < 5) {
+          player.alive = false;
+          console.log(`${player.name} noodle suicide.`);
           return;
         }
       }
-    
-      trail.current.push({ x: pos.current.x, y: pos.current.y });
-    
-      if (
-        pos.current.x < 0 ||
-        pos.current.x >= GAME_SIZE ||
-        pos.current.y < 0 ||
-        pos.current.y >= GAME_SIZE
-      ) {
-        isDead.current = true;
-        console.log('💀 Noodle has perished at the wall.');
-      }
+
+      // Add new position to trail
+      player.trail.push(newPos);
     };
-    
 
     const loop = (now) => {
       const delta = (now - lastTime) / 1000;
@@ -87,6 +99,7 @@ export default function GameCanvas() {
     };
   }, []);
 
+  // Responsive scale logic
   useEffect(() => {
     const handleResize = () => {
       const { innerWidth: w, innerHeight: h } = window;
@@ -100,13 +113,8 @@ export default function GameCanvas() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  function distance(a, b) {
-    return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
-  }  
-
   return (
     <div
-      ref={wrapperRef}
       style={{
         width: '100vw',
         height: '100vh',
