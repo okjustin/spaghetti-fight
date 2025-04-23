@@ -1,0 +1,6 @@
+@SpaghettiFight.Server_HostAddress = http://localhost:5287
+
+GET {{SpaghettiFight.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
