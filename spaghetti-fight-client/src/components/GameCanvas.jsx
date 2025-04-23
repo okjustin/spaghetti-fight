@@ -37,6 +37,19 @@ export default function GameCanvas() {
     
       pos.current.x += Math.cos(angle.current) * speed * delta;
       pos.current.y += Math.sin(angle.current) * speed * delta;
+
+      const head = { x: pos.current.x, y: pos.current.y };
+      const minSelfDistance = 5;
+
+      const trailToCheck = trail.current.slice(0, -10);
+
+      for (const point of trailToCheck) {
+        if (distance(head, point) < minSelfDistance) {
+          isDead.current = true;
+          console.log('💀 Noodle committed suicide.');
+          return;
+        }
+      }
     
       trail.current.push({ x: pos.current.x, y: pos.current.y });
     
@@ -86,6 +99,10 @@ export default function GameCanvas() {
 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  function distance(a, b) {
+    return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+  }  
 
   return (
     <div
