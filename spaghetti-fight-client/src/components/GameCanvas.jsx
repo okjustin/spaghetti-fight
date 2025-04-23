@@ -30,7 +30,7 @@ export default function GameCanvas() {
 
     noodles.current.set('player-2', {
       id: 'player-2',
-      name: 'BotBob',
+      name: 'Noah',
       color: 'blue',
       trail: [{ x: 600, y: 400 }],
       angle: Math.PI, // facing left
@@ -47,7 +47,11 @@ export default function GameCanvas() {
     const draw = () => {
       const local = noodles.current.get('player-1');
       ctx.fillStyle = local?.alive ? '#000' : '#330000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);      
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.font = '16px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
 
       for (const noodle of noodles.current.values()) {
         ctx.fillStyle = noodle.color;
@@ -56,6 +60,14 @@ export default function GameCanvas() {
           ctx.arc(point.x, point.y, RADIUS, 0, Math.PI * 2);
           ctx.fill();
         }
+      }
+
+      for (const noodle of noodles.current.values()) {
+        const head = noodle.trail[noodle.trail.length - 1];
+        if (!head) continue;
+      
+        ctx.fillStyle = noodle.alive ? '#fff' : '#888';
+        ctx.fillText(noodle.name, head.x, head.y - RADIUS - 2);
       }
     };
 
