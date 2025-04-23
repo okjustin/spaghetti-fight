@@ -60,53 +60,88 @@ export default function GameCanvas() {
     };
 
     const update = (delta) => {
+      const toKill = new Set();
+      const nextHeads = new Map();
+    
+      // Step 1: Precalculate next head position for every living noodle
       for (const noodle of noodles.current.values()) {
         if (!noodle.alive) continue;
-
-        const { left, right } = noodle.controls;
-        if (keys.current[left]) noodle.angle -= 2 * delta;
-        if (keys.current[right]) noodle.angle += 2 * delta;
-
+    
         const last = noodle.trail[noodle.trail.length - 1];
         const newX = last.x + Math.cos(noodle.angle) * SPEED * delta;
         const newY = last.y + Math.sin(noodle.angle) * SPEED * delta;
-        const newPos = { x: newX, y: newY };
-
-        // Wall death
+    
+        nextHeads.set(noodle.id, { x: newX, y: newY });
+      }
+    
+      // Step 2: Head-on collision detection
+      for (const [id1, head1] of nextHeads.entries()) {
+        for (const [id2, head2] of nextHeads.entries()) {
+          if (id1 >= id2) continue;
+    
+          if (distance(head1, head2) < RADIUS * 2) {
+            toKill.add(id1);
+            toKill.add(id2);
+    
+            const a = noodles.current.get(id1);
+            const b = noodles.current.get(id2);
+            console.log(`${a?.name} and ${b?.name} bonked heads!`);
+          }
+        }
+      }
+    
+      // Step 3: Process all movement and trail collisions
+      for (const noodle of noodles.current.values()) {
+        if (!noodle.alive || toKill.has(noodle.id)) continue;
+    
+        const { left, right } = noodle.controls;
+        if (keys.current[left]) noodle.angle -= 2 * delta;
+        if (keys.current[right]) noodle.angle += 2 * delta;
+    
+        const newPos = nextHeads.get(noodle.id);
+        if (!newPos) continue;
+    
+        // Wall collision
         if (
-          newX < 0 || newX >= GAME_SIZE ||
-          newY < 0 || newY >= GAME_SIZE
+          newPos.x < 0 || newPos.x >= GAME_SIZE ||
+          newPos.y < 0 || newPos.y >= GAME_SIZE
         ) {
-          noodle.alive = false;
+          toKill.add(noodle.id);
           console.log(`${noodle.name} hit the wall.`);
           continue;
         }
-
+    
+        // Trail collision (self and others)
         let collided = false;
-
-        // Loop through all noodles
+    
         for (const other of noodles.current.values()) {
-          if (!other.alive) continue;
-        
-          // Determine which trail points to check
           const isSelf = noodle.id === other.id;
           const trail = isSelf ? other.trail.slice(0, -10) : other.trail;
-        
+    
           for (const point of trail) {
             if (distance(newPos, point) < RADIUS * 2) {
-              noodle.alive = false;
+              toKill.add(noodle.id);
               collided = true;
               console.log(`${noodle.name} crashed into ${isSelf ? 'itself' : other.name}`);
               break;
             }
           }
-        
+    
           if (collided) break;
-        }        
-
-        noodle.trail.push(newPos);
+        }
+    
+        // Push position if not dead
+        if (!toKill.has(noodle.id)) {
+          noodle.trail.push(newPos);
+        }
       }
-    };
+    
+      // Step 4: Finalise deaths
+      for (const id of toKill) {
+        const n = noodles.current.get(id);
+        if (n) n.alive = false;
+      }
+    };    
 
     const loop = (now) => {
       const delta = (now - lastTime) / 1000;
