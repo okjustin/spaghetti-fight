@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react';
 
 export default function GameCanvas() {
   const canvasRef = useRef(null);
+  const trail = useRef([]);
   const pos = useRef({ x: 400, y: 300 });
   const angle = useRef(0);
   const speed = 100;
@@ -16,15 +17,20 @@ export default function GameCanvas() {
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = 'red';
-      ctx.fillRect(pos.current.x, pos.current.y, 5, 5);
-    };
+    
+      for (const point of trail.current) {
+        ctx.fillRect(point.x, point.y, 2, 2);
+      }
+    };    
 
     const update = (delta) => {
       if (keys.current.ArrowLeft) angle.current -= 2 * delta;
       if (keys.current.ArrowRight) angle.current += 2 * delta;
-
+    
       pos.current.x += Math.cos(angle.current) * speed * delta;
       pos.current.y += Math.sin(angle.current) * speed * delta;
+    
+      trail.current.push({ x: pos.current.x, y: pos.current.y });
     };
 
     const loop = (now) => {
