@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 const GAME_SIZE = 800;
-const SPEED = 100; // pixels per second
+const SPEED = 100;
+const RADIUS = 5;
 
 function distance(a, b) {
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
@@ -12,69 +13,99 @@ export default function GameCanvas() {
   const keys = useRef({});
   const [scale, setScale] = useState(1);
 
-  // Noodle state
-  const noodle = useRef({
-    id: 'player-1',
-    name: 'Justin',
-    color: 'red',
-    trail: [{ x: 400, y: 400 }],
-    angle: 0,
-    alive: true,
-  });
+  // 🧠 Store all noodles in a Map
+  const noodles = useRef(new Map());
 
-  // Movement + game loop
+  // Add two local noodles
+  useEffect(() => {
+    noodles.current.set('player-1', {
+      id: 'player-1',
+      name: 'Justin',
+      color: 'red',
+      trail: [{ x: 200, y: 400 }],
+      angle: 0,
+      alive: true,
+      controls: { left: 'ArrowLeft', right: 'ArrowRight' },
+    });
+
+    noodles.current.set('player-2', {
+      id: 'player-2',
+      name: 'BotBob',
+      color: 'blue',
+      trail: [{ x: 600, y: 400 }],
+      angle: Math.PI, // facing left
+      alive: true,
+      controls: { left: 'a', right: 'd' },
+    });
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     let lastTime = performance.now();
 
     const draw = () => {
-      // Background based on death
-      ctx.fillStyle = noodle.current.alive ? '#000' : '#330000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const local = noodles.current.get('player-1');
+      ctx.fillStyle = local?.alive ? '#000' : '#330000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);      
 
-      // Draw noodle trail
-      ctx.fillStyle = noodle.current.color;
-      for (const point of noodle.current.trail) {
-        ctx.fillRect(point.x, point.y, 2, 2);
+      for (const noodle of noodles.current.values()) {
+        ctx.fillStyle = noodle.color;
+        for (const point of noodle.trail) {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, RADIUS, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     };
 
     const update = (delta) => {
-      const player = noodle.current;
-      if (!player.alive) return;
+      for (const noodle of noodles.current.values()) {
+        if (!noodle.alive) continue;
 
-      // Rotate
-      if (keys.current.ArrowLeft) player.angle -= 2 * delta;
-      if (keys.current.ArrowRight) player.angle += 2 * delta;
+        const { left, right } = noodle.controls;
+        if (keys.current[left]) noodle.angle -= 2 * delta;
+        if (keys.current[right]) noodle.angle += 2 * delta;
 
-      // Move
-      const last = player.trail[player.trail.length - 1];
-      const newX = last.x + Math.cos(player.angle) * SPEED * delta;
-      const newY = last.y + Math.sin(player.angle) * SPEED * delta;
-      const newPos = { x: newX, y: newY };
+        const last = noodle.trail[noodle.trail.length - 1];
+        const newX = last.x + Math.cos(noodle.angle) * SPEED * delta;
+        const newY = last.y + Math.sin(noodle.angle) * SPEED * delta;
+        const newPos = { x: newX, y: newY };
 
-      // Wall death
-      if (
-        newX < 0 || newX >= GAME_SIZE ||
-        newY < 0 || newY >= GAME_SIZE
-      ) {
-        player.alive = false;
-        console.log(`${player.name} hit the wall.`);
-        return;
-      }
-
-      // Self collision (skip last 10 to avoid false positives)
-      for (const point of player.trail.slice(0, -10)) {
-        if (distance(newPos, point) < 5) {
-          player.alive = false;
-          console.log(`${player.name} noodle suicide.`);
-          return;
+        // Wall death
+        if (
+          newX < 0 || newX >= GAME_SIZE ||
+          newY < 0 || newY >= GAME_SIZE
+        ) {
+          noodle.alive = false;
+          console.log(`${noodle.name} hit the wall.`);
+          continue;
         }
-      }
 
-      // Add new position to trail
-      player.trail.push(newPos);
+        let collided = false;
+
+        // Loop through all noodles
+        for (const other of noodles.current.values()) {
+          if (!other.alive) continue;
+        
+          // Determine which trail points to check
+          const isSelf = noodle.id === other.id;
+          const trail = isSelf ? other.trail.slice(0, -10) : other.trail;
+        
+          for (const point of trail) {
+            if (distance(newPos, point) < RADIUS * 2) {
+              noodle.alive = false;
+              collided = true;
+              console.log(`${noodle.name} crashed into ${isSelf ? 'itself' : other.name}`);
+              break;
+            }
+          }
+        
+          if (collided) break;
+        }        
+
+        noodle.trail.push(newPos);
+      }
     };
 
     const loop = (now) => {
@@ -99,7 +130,7 @@ export default function GameCanvas() {
     };
   }, []);
 
-  // Responsive scale logic
+  // Resizing
   useEffect(() => {
     const handleResize = () => {
       const { innerWidth: w, innerHeight: h } = window;
