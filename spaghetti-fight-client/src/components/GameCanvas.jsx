@@ -42,5 +42,11 @@ export default function GameCanvas() {
     }
   }, []);
 
+  useEffect(() => {
+    fetch('http://localhost:5287/api/game/ping')
+      .then(res => res.text())
+      .then(data => console.log(data));
+  }, []);
+
   return <canvas ref={canvasRef} width={800} height={600} />;
-}
+}``
