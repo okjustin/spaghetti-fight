@@ -1,0 +1,6 @@
+@BattleNoodles.Server_HostAddress = http://localhost:5047
+
+GET {{BattleNoodles.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
