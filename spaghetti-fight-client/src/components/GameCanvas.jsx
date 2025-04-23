@@ -10,6 +10,7 @@ export default function GameCanvas() {
   const speed = 100;
   const keys = useRef({});
   const trail = useRef([]);
+  const isDead = useRef(false);
 
   const [scale, setScale] = useState(1);
 
@@ -19,23 +20,37 @@ export default function GameCanvas() {
     let lastTime = performance.now();
 
     const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = isDead.current ? '#330000' : '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
       ctx.fillStyle = 'red';
-
       for (const point of trail.current) {
         ctx.fillRect(point.x, point.y, 2, 2);
       }
     };
-
+    
     const update = (delta) => {
+      if (isDead.current) return;
+    
       if (keys.current.ArrowLeft) angle.current -= 2 * delta;
       if (keys.current.ArrowRight) angle.current += 2 * delta;
-
+    
       pos.current.x += Math.cos(angle.current) * speed * delta;
       pos.current.y += Math.sin(angle.current) * speed * delta;
-
+    
       trail.current.push({ x: pos.current.x, y: pos.current.y });
+    
+      if (
+        pos.current.x < 0 ||
+        pos.current.x >= GAME_SIZE ||
+        pos.current.y < 0 ||
+        pos.current.y >= GAME_SIZE
+      ) {
+        isDead.current = true;
+        console.log('💀 Noodle has perished at the wall.');
+      }
     };
+    
 
     const loop = (now) => {
       const delta = (now - lastTime) / 1000;
